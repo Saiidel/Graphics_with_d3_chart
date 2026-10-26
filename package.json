@@ -1,0 +1,12 @@
+{
+  "name": "dashboard-tecnologia",
+  "version": "1.0.0",
+  "description": "Dashboard interactivo con Google Charts y D3.js",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

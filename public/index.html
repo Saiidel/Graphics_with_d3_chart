@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Interactivo - Desempeño Comercial</title>
+    <!-- Google Charts Library -->
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <!-- D3.js Library llamada a la librería -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6; 
+            color: #333; 
+        }
+        header, section { 
+            background: #fff; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        h1, h2 { 
+            color: #2c3e50; 
+            margin-top: 0;
+        }
+        button { 
+            background-color: #3498db; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            font-size: 16px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            transition: background 0.3s;
+        }
+        button:hover { 
+            background-color: #2980b9; 
+        }
+        
+        /* Diseño adaptable: Lado a lado en pantallas amplias, apiladas en pantallas pequeñas */
+        .dashboard-container { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 20px; 
+            width: 100%;
+        }
+        .chart-box { 
+            flex: 1 1 calc(50% - 20px); 
+            min-width: 480px; 
+            max-width: 100%;
+            background: #fff;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        
+        .chart-container {
+            width: 100%;
+            height: 440px;
+            position: relative;
+        }
+
+        .tooltip { 
+            position: absolute; 
+            background: rgba(0,0,0,0.85); 
+            color: #fff; 
+            padding: 8px 12px; 
+            border-radius: 4px; 
+            font-size: 12px; 
+            pointer-events: none; 
+            opacity: 0; 
+            transition: opacity 0.3s; 
+            z-index: 10;
+        }
+        .bubble { 
+            stroke: #fff; 
+            stroke-width: 1.5px; 
+            cursor: pointer; 
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Dashboard de Desempeño Comercial</h1>
+        <p>Evaluación de productos (Smartphone A, Smartphone B y Tablet X) en Enero y Febrero.</p>
+        <button id="btnActualizar">Actualizar Datos</button>
+    </header>
+
+    <div class="dashboard-container">
+        <!-- Visualización Básica: Google Charts -->
+        <section class="chart-box">
+            <h2>Evolución de Ventas (Google Charts)</h2>
+            <div id="google-chart" class="chart-container"></div>
+        </section>
+
+        <!-- Visualización Avanzada: D3.js -->
+        <section class="chart-box">
+            <h2>Multidimensional - Burbujas (D3.js)</h2>
+            <div id="d3-chart" class="chart-container"></div>
+        </section>
+    </div>
+
+    <div id="tooltip" class="tooltip"></div>
+
+    <script>
+        let datosActuales = [];
+
+        google.charts.load('current', {packages: ['corechart']});
+        google.charts.setOnLoadCallback(inicializarDashboard);
+
+        function inicializarDashboard() {
+            cargarDatosYRenderizar();
+            document.getElementById('btnActualizar').addEventListener('click', actualizarDatosServidor);
+            
+            window.addEventListener('resize', () => {
+                if (datosActuales.length > 0) {
+                    renderGoogleChart(datosActuales);
+                    renderD3Chart(datosActuales);
+                }
+            });
+        }
+
+        function cargarDatosYRenderizar() {
+            fetch('/api/ventas')
+                .then(response => response.json())
+                .then(data => {
+                    datosActuales = data;
+                    renderGoogleChart(data);
+                    renderD3Chart(data);
+                })
+                .catch(error => console.error('Error al cargar datos:', error));
+        }
+
+        function actualizarDatosServidor() {
+            fetch('/api/actualizar', { method: 'POST' })
+                .then(response => response.json())
+                .then(resultado => {
+                    datosActuales = resultado.datos;
+                    renderGoogleChart(resultado.datos);
+                    renderD3Chart(resultado.datos);
+                })
+                .catch(error => console.error('Error al actualizar:', error));
+        }
+
+        // Gráfico de Columnas con Google Charts
+        function renderGoogleChart(data) {
+            const meses = [...new Set(data.map(d => d.mes))];
+            const productos = [...new Set(data.map(d => d.producto))];
+
+            let arrayData = [['Mes', ...productos]];
+
+            meses.forEach(mes => {
+                let fila = [mes];
+                productos.forEach(prod => {
+                    let encontrado = data.find(d => d.mes === mes && d.producto === prod);
+                    fila.push(encontrado ? encontrado.ventas : 0);
+                });
+                arrayData.push(fila);
+            });
+
+            var chartData = google.visualization.arrayToDataTable(arrayData);
+
+            var options = {
+                title: 'Ventas Mensuales por Producto',
+                chartArea: { width: '82%', height: '62%' },
+                legend: { position: 'bottom', textStyle: { fontSize: 12 } },
+                hAxis: { title: 'Mes' },
+                vAxis: { title: 'Número de Ventas' },
+                colors: ['#3498db', '#e74c3c', '#2ecc71']
+            };
+
+            var chart = new google.visualization.ColumnChart(document.getElementById('google-chart'));
+            chart.draw(chartData, options);
+        }
+
+        // Gráfico de Burbujas Multidimensional con D3.js (Incluye Título, Ejes y Leyenda)
+        function renderD3Chart(data) {
+            const container = d3.select("#d3-chart");
+            container.html(""); 
+
+            const containerNode = document.getElementById('d3-chart');
+            const containerWidth = containerNode.clientWidth > 0 ? containerNode.clientWidth : 500;
+            const containerHeight = 440;
+
+            const margin = { top: 50, right: 30, bottom: 70, left: 75 },
+                  width = containerWidth - margin.left - margin.right,
+                  height = containerHeight - margin.top - margin.bottom - 20;
+
+            const svg = container.append("svg")
+                .attr("viewBox", `0 0 ${containerWidth} ${containerHeight}`)
+                .attr("preserveAspectRatio", "xMidYMid meet")
+                .style("width", "100%")
+                .style("height", "100%")
+              .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const xScale = d3.scalePoint()
+                .domain([...new Set(data.map(d => d.mes))])
+                .range([0, width])
+                .padding(0.5);
+
+            const yScale = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.ingresos) * 1.15])
+                .range([height, 0]);
+
+            const rScale = d3.scaleSqrt()
+                .domain([0, d3.max(data, d => d.ventas)])
+                .range([5, 22]);
+
+            const productos = [...new Set(data.map(d => d.producto))];
+            const colorScale = d3.scaleOrdinal()
+                .domain(productos)
+                .range(['#3498db', '#e74c3c', '#2ecc71']);
+
+            // --- TÍTULO PRINCIPAL DE LA GRÁFICA D3 ---
+            svg.append("text")
+                .attr("x", width / 2)
+                .attr("y", -25)
+                .attr("text-anchor", "middle")
+                .style("font-size", "14px")
+                .style("font-weight", "bold")
+                .style("fill", "#2c3e50")
+                .text("Análisis Multidimensional: Ingresos vs Mes (Tamaño = Ventas)");
+
+            // Eje X
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(xScale));
+
+            // Etiqueta del Eje X
+            svg.append("text")
+                .attr("x", width / 2)
+                .attr("y", height + 35)
+                .attr("text-anchor", "middle")
+                .style("font-size", "12px")
+                .style("font-style", "italic")
+                .style("fill", "#333")
+                .text("Mes");
+
+            // Eje Y
+            svg.append("g")
+                .call(d3.axisLeft(yScale));
+
+            // Etiqueta del Eje Y
+            svg.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", -55)
+                .attr("x", -height / 2)
+                .attr("text-anchor", "middle")
+                .style("font-size", "12px")
+                .style("font-style", "italic")
+                .style("fill", "#333")
+                .text("Ingresos Totales ($)");
+
+            const tooltip = d3.select("#tooltip");
+
+            // Dibujar Burbujas
+            svg.selectAll("circle")
+                .data(data)
+                .enter()
+                .append("circle")
+                .attr("class", "bubble")
+                .attr("cx", d => xScale(d.mes))
+                .attr("cy", d => yScale(d.ingresos))
+                .attr("r", 0)
+                .attr("fill", d => colorScale(d.producto))
+                .on("mouseover", (event, d) => {
+                    tooltip.transition().duration(200).style("opacity", 0.95);
+                    tooltip.html(`<strong>${d.producto}</strong><br/>Mes: ${d.mes}<br/>Ventas: ${d.ventas}<br/>Ingresos: $${d.ingresos}<br/>Precio: $${d.precio}`)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", () => {
+                    tooltip.transition().duration(500).style("opacity", 0);
+                })
+                .transition()
+                .duration(800)
+                .attr("r", d => rScale(d.ventas));
+
+            // --- LEYENDA INFERIOR DE PRODUCTOS ---
+            const legendGroup = svg.append("g")
+                .attr("transform", `translate(0, ${height + 50})`);
+
+            const legendItemWidth = 130;
+            const totalLegendWidth = productos.length * legendItemWidth;
+            const startX = Math.max(0, (width - totalLegendWidth) / 2);
+
+            productos.forEach((prod, i) => {
+                const item = legendGroup.append("g")
+                    .attr("transform", `translate(${startX + (i * legendItemWidth)}, 0)`);
+
+                item.append("rect")
+                    .attr("width", 12)
+                    .attr("height", 12)
+                    .attr("fill", colorScale(prod))
+                    .attr("rx", 2);
+
+                item.append("text")
+                    .attr("x", 18)
+                    .attr("y", 10.5)
+                    .style("font-size", "12px")
+                    .style("fill", "#333")
+                    .text(prod);
+            });
+        }
+    </script>
+</body>
+</html>
