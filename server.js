@@ -8,7 +8,7 @@ const PORT = 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Endpoint para obtener los datos
+// Código para obtener los datos
 app.get('/api/ventas', (req, res) => {
     const filePath = path.join(__dirname, 'public', 'ventas.json');
     fs.readFile(filePath, 'utf8', (err, data) => {
@@ -19,7 +19,7 @@ app.get('/api/ventas', (req, res) => {
     });
 });
 
-// Endpoint para simular la actualización dinámica
+// Cádigo para simular la actualización dinámica
 app.post('/api/actualizar', (req, res) => {
     const filePath = path.join(__dirname, 'public', 'ventas.json');
     fs.readFile(filePath, 'utf8', (err, data) => {

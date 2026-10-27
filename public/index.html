@@ -112,8 +112,8 @@
     <div id="tooltip" class="tooltip"></div>
 
     <script>
-        let datosActuales = [];
 
+        let datosActuales = [];
         google.charts.load('current', {packages: ['corechart']});
         google.charts.setOnLoadCallback(inicializarDashboard);
 
@@ -175,7 +175,7 @@
                 legend: { position: 'bottom', textStyle: { fontSize: 12 } },
                 hAxis: { title: 'Mes' },
                 vAxis: { title: 'Número de Ventas' },
-                colors: ['#3498db', '#e74c3c', '#2ecc71']
+                colors: ['red', 'blue', 'green']
             };
 
             var chart = new google.visualization.ColumnChart(document.getElementById('google-chart'));
@@ -219,7 +219,7 @@
             const productos = [...new Set(data.map(d => d.producto))];
             const colorScale = d3.scaleOrdinal()
                 .domain(productos)
-                .range(['#3498db', '#e74c3c', '#2ecc71']);
+                .range(['red', 'blue', 'green']);
 
             // --- TÍTULO PRINCIPAL DE LA GRÁFICA D3 ---
             svg.append("text")
@@ -241,7 +241,7 @@
                 .attr("x", width / 2)
                 .attr("y", height + 35)
                 .attr("text-anchor", "middle")
-                .style("font-size", "12px")
+                .style("font-size", "12 px")
                 .style("font-style", "italic")
                 .style("fill", "#333")
                 .text("Mes");
